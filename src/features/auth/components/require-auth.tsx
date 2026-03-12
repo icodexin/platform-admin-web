@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 
 import { usersApi } from "@/api"
@@ -8,15 +8,23 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   clearStoredAuthTokens,
   getAccessToken,
+  subscribeAuthTokenChanges,
 } from "@/lib/auth/token-storage"
 import { useAuthStore } from "@/stores/auth-store"
 
 export function RequireAuth() {
   const location = useLocation()
-  const accessToken = getAccessToken()
+  const [, setAuthTokenVersion] = useState(0)
   const currentUser = useAuthStore((state) => state.currentUser)
   const setCurrentUser = useAuthStore((state) => state.setCurrentUser)
   const clearAuthState = useAuthStore((state) => state.clearAuthState)
+  const accessToken = getAccessToken()
+
+  useEffect(() => {
+    return subscribeAuthTokenChanges(() => {
+      setAuthTokenVersion((current) => current + 1)
+    })
+  }, [])
 
   const currentUserQuery = useQuery({
     queryKey: ["auth", "current-user"],
