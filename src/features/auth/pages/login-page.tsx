@@ -161,7 +161,7 @@ export function LoginPage() {
 
         <section className="flex items-center justify-center px-6 py-10 sm:px-10 lg:px-12">
           <div className="w-full max-w-md">
-            <Card className="border-slate-200/80 bg-white/90 shadow-2xl shadow-slate-900/8 backdrop-blur-sm">
+            <Card className="border-slate-200/80 bg-white/90 text-slate-950 shadow-2xl shadow-slate-900/8 backdrop-blur-sm">
               <CardHeader className="space-y-3">
                 <div className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
                   欢迎登录
@@ -179,10 +179,13 @@ export function LoginPage() {
               <CardContent>
                 <form className="space-y-5" onSubmit={onSubmit}>
                   <div className="space-y-2">
-                    <Label htmlFor="username">统一身份账号</Label>
+                    <Label htmlFor="username" className="text-slate-900">
+                      统一身份账号
+                    </Label>
                     <Input
                       id="username"
                       placeholder="请输入账号"
+                      className="border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 caret-slate-950 shadow-sm"
                       aria-invalid={errors.username ? true : undefined}
                       {...register("username", {
                         required: "请输入统一身份账号",
@@ -196,13 +199,15 @@ export function LoginPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">密码</Label>
+                    <Label htmlFor="password" className="text-slate-900">
+                      密码
+                    </Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={isPasswordVisible ? "text" : "password"}
                         placeholder="请输入密码"
-                        className="pr-10"
+                        className="border-slate-200 bg-white pr-10 text-slate-950 placeholder:text-slate-400 caret-slate-950 shadow-sm"
                         aria-invalid={errors.password ? true : undefined}
                         {...register("password", {
                           required: "请输入登录密码",
@@ -234,7 +239,11 @@ export function LoginPage() {
                     </div>
                   ) : null}
 
-                  <Button className="h-11 w-full text-sm" disabled={isSubmitting} type="submit">
+                  <Button
+                    className="h-11 w-full bg-slate-950 text-sm text-white hover:bg-slate-900"
+                    disabled={isSubmitting}
+                    type="submit"
+                  >
                     {isSubmitting ? "登录中..." : "进入系统"}
                     <ArrowRight className="size-4" />
                   </Button>
