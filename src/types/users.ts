@@ -1,6 +1,7 @@
 import type { PaginatedResponse } from "@/types/api"
 
 export type UserId = number
+export type UserRoleId = number
 
 export type UserType = "student" | "teacher" | "admin"
 
@@ -41,6 +42,23 @@ export interface AdminUser extends UserBase {
 }
 
 export type User = StudentUser | TeacherUser | AdminUser
+
+export interface UserRoleSummary {
+  id: UserRoleId
+  code: string
+  name: string
+  is_system: boolean
+}
+
+export interface UserRolesResponse {
+  user_id: UserId
+  immutable_role: UserRoleSummary
+  roles: UserRoleSummary[]
+}
+
+export interface UpdateUserRolesPayload {
+  role_ids: UserRoleId[]
+}
 
 interface CreateUserBasePayload {
   unified_id: string
