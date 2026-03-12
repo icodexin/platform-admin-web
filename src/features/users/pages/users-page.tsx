@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Ban, Eye, PencilLine, Plus, RefreshCcw, Search, UsersRound } from "lucide-react"
-import { startTransition, useDeferredValue, useMemo, useState } from "react"
+import { startTransition, useMemo, useState } from "react"
 
 import { usersApi } from "@/api"
 import {
@@ -83,9 +83,11 @@ export function UsersPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
 
   const [keyword, setKeyword] = useState("")
+  const [keywordInput, setKeywordInput] = useState("")
   const [userType, setUserType] = useState<UserType | "all">("all")
   const [status, setStatus] = useState<StatusFilter>("all")
   const [page, setPage] = useState(1)
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [feedback, setFeedback] = useState<{
     type: "success" | "error"
     message: string
@@ -95,17 +97,15 @@ export function UsersPage() {
   const [detailUserId, setDetailUserId] = useState<UserId | null>(null)
   const [deactivateUser, setDeactivateUser] = useState<User | null>(null)
 
-  const deferredKeyword = useDeferredValue(keyword.trim())
-
   const queryParams = useMemo<ListUsersParams>(() => {
     return {
       page,
       page_size: PAGE_SIZE,
-      keyword: deferredKeyword || undefined,
+      keyword: keyword.trim() || undefined,
       user_type: userType === "all" ? undefined : userType,
       is_active: toIsActive(status),
     }
-  }, [deferredKeyword, page, status, userType])
+  }, [keyword, page, status, userType])
 
   const usersQuery = useQuery({
     queryKey: ["users", queryParams],
@@ -146,8 +146,16 @@ export function UsersPage() {
   const resetFilters = () => {
     startTransition(() => {
       setKeyword("")
+      setKeywordInput("")
       setUserType("all")
       setStatus("all")
+      setPage(1)
+    })
+  }
+
+  const submitSearch = () => {
+    startTransition(() => {
+      setKeyword(keywordInput)
       setPage(1)
     })
   }
@@ -220,20 +228,33 @@ export function UsersPage() {
 
         <CardContent className="space-y-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]">
-            <div className="relative">
+            <form
+              className="relative"
+              onSubmit={(event) => {
+                event.preventDefault()
+                submitSearch()
+              }}
+            >
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className="pl-9 pr-24"
                 placeholder="搜索账号或姓名"
-                value={keyword}
-                onChange={(event) => {
-                  startTransition(() => {
-                    setKeyword(event.target.value)
-                    setPage(1)
-                  })
-                }}
+                value={keywordInput}
+                onBlur={() => setIsSearchFocused(false)}
+                onChange={(event) => setKeywordInput(event.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
               />
-            </div>
+              {isSearchFocused || keywordInput.trim() ? (
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="absolute top-1/2 right-1 h-7 -translate-y-1/2 rounded-md px-3"
+                  onMouseDown={(event) => event.preventDefault()}
+                >
+                  搜索
+                </Button>
+              ) : null}
+            </form>
 
             <Select
               value={userType}

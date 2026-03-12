@@ -124,11 +124,11 @@ export function AdminLayout() {
 
   return (
     <SidebarProvider defaultOpen>
-      <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader className="px-2 py-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-sidebar-border/80 bg-sidebar-accent/45 px-3 py-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground">
-              <LayoutDashboard className="size-5" />
+      <Sidebar collapsible="icon" variant="sidebar">
+        <SidebarHeader className="px-2 py-4 group-data-[collapsible=icon]:px-0">
+          <div className="flex items-center gap-3 rounded-2xl border border-sidebar-border/80 bg-sidebar-accent/45 px-3 py-3 transition-all group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:rounded-xl group-data-[collapsible=icon]:border-sidebar-border/60 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:rounded-xl">
+              <LayoutDashboard className="size-5 group-data-[collapsible=icon]:size-4" />
             </div>
             <div className="min-w-0 transition-opacity group-data-[collapsible=icon]:hidden">
               <div className="truncate text-sm font-semibold">智能感知平台</div>
@@ -178,7 +178,7 @@ export function AdminLayout() {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.06),_transparent_24%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(241,245,249,0.9)_100%)] dark:bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.12),_transparent_24%),linear-gradient(180deg,_rgba(2,6,23,1)_0%,_rgba(15,23,42,0.96)_100%)]">
+      <SidebarInset className="min-h-svh bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.06),_transparent_24%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(241,245,249,0.9)_100%)] dark:bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.12),_transparent_24%),linear-gradient(180deg,_rgba(2,6,23,1)_0%,_rgba(15,23,42,0.96)_100%)]">
         <header className="sticky top-0 z-20 border-b bg-background/82 backdrop-blur-md">
           <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
             <div className="flex items-center gap-3">
