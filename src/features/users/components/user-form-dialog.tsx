@@ -23,18 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  buildUserFormSubmissionPlan,
+  getFormValuesFromUser,
+} from "@/features/users/lib/user-form-submit-plan"
 import { normalizeApiError } from "@/lib/http"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth-store"
-import type {
-  CreateUserPayload,
-  Gender,
-  StudentType,
-  UpdateUserPayload,
-  User,
-  UserId,
-  UserType,
-} from "@/types/users"
+import type { CreateUserPayload, UserId } from "@/types/users"
 
 interface UserFormDialogProps {
   open: boolean
@@ -45,37 +41,22 @@ interface UserFormDialogProps {
   onError: (message: string) => void
 }
 
-interface UserFormValues {
-  user_type: UserType
-  unified_id: string
-  name: string
-  password: string
-  gender: Gender
-  birthdate: string
-  student_type: StudentType
-  college: string
-  major: string
-  enrollment_year: string
-  department: string
-  title: string
-  role_ids: number[]
-}
+type UserFormValues = ReturnType<typeof getFormValuesFromUser>
 
-const defaultValues: UserFormValues = {
+const defaultValues: UserFormValues = getFormValuesFromUser({
+  id: 0,
   user_type: "student",
   unified_id: "",
   name: "",
-  password: "",
   gender: "unknown",
   birthdate: "",
+  is_active: true,
+  roles: [],
   student_type: "undergraduate",
   college: "",
   major: "",
-  enrollment_year: "",
-  department: "",
-  title: "",
-  role_ids: [],
-}
+  enrollment_year: null,
+})
 
 function toOptionalText(value: string) {
   const trimmed = value.trim()
@@ -85,27 +66,6 @@ function toOptionalText(value: string) {
 function toOptionalNumber(value: string) {
   const trimmed = value.trim()
   return trimmed ? Number(trimmed) : null
-}
-
-function getFormValuesFromUser(user: User): UserFormValues {
-  return {
-    user_type: user.user_type,
-    unified_id: user.unified_id,
-    name: user.name,
-    password: "",
-    gender: user.gender ?? "unknown",
-    birthdate: user.birthdate ?? "",
-    student_type: user.user_type === "student" ? user.student_type ?? "undergraduate" : "undergraduate",
-    college: user.user_type === "student" ? user.college ?? "" : "",
-    major: user.user_type === "student" ? user.major ?? "" : "",
-    enrollment_year:
-      user.user_type === "student" && user.enrollment_year
-        ? String(user.enrollment_year)
-        : "",
-    department: user.user_type === "teacher" ? user.department ?? "" : "",
-    title: user.user_type === "teacher" ? user.title ?? "" : "",
-    role_ids: [],
-  }
 }
 
 function toCreatePayload(values: UserFormValues): CreateUserPayload {
@@ -142,36 +102,6 @@ function toCreatePayload(values: UserFormValues): CreateUserPayload {
     ...basePayload,
     user_type: "admin",
   }
-}
-
-function toUpdatePayload(values: UserFormValues): UpdateUserPayload {
-  const basePayload = {
-    unified_id: values.unified_id.trim(),
-    name: values.name.trim(),
-    gender: values.gender,
-    birthdate: values.birthdate || null,
-    password: values.password.trim() ? values.password : undefined,
-  }
-
-  if (values.user_type === "student") {
-    return {
-      ...basePayload,
-      student_type: values.student_type,
-      college: toOptionalText(values.college),
-      major: toOptionalText(values.major),
-      enrollment_year: toOptionalNumber(values.enrollment_year),
-    }
-  }
-
-  if (values.user_type === "teacher") {
-    return {
-      ...basePayload,
-      department: toOptionalText(values.department),
-      title: toOptionalText(values.title),
-    }
-  }
-
-  return basePayload
 }
 
 export function UserFormDialog({
@@ -220,27 +150,15 @@ export function UserFormDialog({
       return
     }
 
-    if (userQuery.data) {
-      form.reset(getFormValuesFromUser(userQuery.data))
-    }
-  }, [form, mode, open, userQuery.data])
-
-  useEffect(() => {
-    if (!open || mode !== "edit" || !userRolesQuery.data) {
-      return
-    }
-
-    form.setValue(
-      "role_ids",
-      userRolesQuery.data.roles
+    if (userQuery.data && userRolesQuery.data) {
+      form.reset({
+        ...getFormValuesFromUser(userQuery.data),
+        role_ids: userRolesQuery.data.roles
         .filter((role) => role.id !== userRolesQuery.data.immutable_role.id)
         .map((role) => role.id),
-      {
-        shouldDirty: false,
-        shouldTouch: false,
-      },
-    )
-  }, [form, mode, open, userRolesQuery.data])
+      })
+    }
+  }, [form, mode, open, userQuery.data, userRolesQuery.data])
 
   const userType =
     useWatch({
@@ -252,10 +170,6 @@ export function UserFormDialog({
       control: form.control,
       name: "role_ids",
     }) ?? []
-  const hasRoleChanges = Boolean(form.formState.dirtyFields.role_ids)
-  const hasProfileChanges = Object.keys(form.formState.dirtyFields).some(
-    (fieldName) => fieldName !== "role_ids",
-  )
   const immutableRole = userRolesQuery.data?.immutable_role ?? null
   const customRoles = (rolesQuery.data?.items ?? []).filter((role) => !role.is_system)
 
@@ -279,14 +193,23 @@ export function UserFormDialog({
       }
 
       let user = userQuery.data
+      const currentRoleIds = userRolesQuery.data?.roles
+        .filter((role) => role.id !== userRolesQuery.data?.immutable_role.id)
+        .map((role) => role.id)
+      const plan = buildUserFormSubmissionPlan({
+        user,
+        values,
+        currentRoleIds,
+        passwordTouched: Boolean(form.formState.touchedFields.password),
+      })
 
-      if (hasProfileChanges) {
-        user = await usersApi.updateUser(userId!, toUpdatePayload(values))
+      if (plan.shouldUpdateProfile) {
+        user = await usersApi.updateUser(userId!, plan.profilePayload)
       }
 
-      if (hasRoleChanges) {
+      if (plan.shouldUpdateRoles) {
         await usersApi.updateUserRoles(userId!, {
-          role_ids: values.role_ids,
+          role_ids: plan.roleIds,
         })
       }
 
@@ -337,6 +260,7 @@ export function UserFormDialog({
         ) : (
           <form
             className="space-y-6"
+            autoComplete="off"
             onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -368,6 +292,7 @@ export function UserFormDialog({
                 <Label htmlFor="unified_id">统一身份账号</Label>
                 <Input
                   id="unified_id"
+                  autoComplete="off"
                   aria-invalid={form.formState.errors.unified_id ? true : undefined}
                   {...form.register("unified_id", {
                     required: "请输入统一身份账号",
@@ -393,6 +318,7 @@ export function UserFormDialog({
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   placeholder={mode === "create" ? "请输入初始密码" : "留空表示不修改"}
                   aria-invalid={form.formState.errors.password ? true : undefined}
                   {...form.register("password", {
