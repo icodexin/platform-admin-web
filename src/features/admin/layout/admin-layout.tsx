@@ -2,19 +2,23 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ActivitySquare,
   ChevronDown,
+  CircleUserRound,
   KeyRound,
   LayoutDashboard,
   LogOut,
   MoonStar,
+  PencilLine,
   ServerCog,
   ShieldCheck,
   SunMedium,
   UsersRound,
 } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 
 import { authApi } from "@/api"
+import { ChangePasswordDialog } from "@/features/auth/components/change-password-dialog"
+import { CurrentUserProfileDialog } from "@/features/auth/components/current-user-profile-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -114,6 +118,8 @@ export function AdminLayout() {
   const clearAuthState = useAuthStore((state) => state.clearAuthState)
   const theme = useThemeStore((state) => state.theme)
   const toggleTheme = useThemeStore((state) => state.toggleTheme)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   const pageMeta = useMemo(() => {
     return (
@@ -253,6 +259,15 @@ export function AdminLayout() {
                     <Badge variant="secondary">{currentUser?.user_type ?? "guest"}</Badge>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                    <CircleUserRound />
+                    <span>查看个人信息</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                    <PencilLine />
+                    <span>修改密码</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={logoutMutation.isPending}
@@ -277,6 +292,12 @@ export function AdminLayout() {
 
           <Outlet />
         </div>
+
+        <CurrentUserProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+        <ChangePasswordDialog
+          open={changePasswordOpen}
+          onOpenChange={setChangePasswordOpen}
+        />
       </SidebarInset>
     </SidebarProvider>
   )
