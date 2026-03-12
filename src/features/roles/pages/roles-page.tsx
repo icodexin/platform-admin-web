@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  Eye,
   Edit3,
   RefreshCcw,
   Search,
@@ -39,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { RoleDetailsDialog } from "@/features/roles/components/role-details-dialog"
 import { RoleFormDialog } from "@/features/roles/components/role-form-dialog"
 import { normalizeApiError } from "@/lib/http"
 import type { ListRolesParams, Role, RoleId } from "@/types/roles"
@@ -62,6 +64,7 @@ export function RolesPage() {
   const [page, setPage] = useState(1)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [detailRoleId, setDetailRoleId] = useState<RoleId | null>(null)
   const [editRoleId, setEditRoleId] = useState<RoleId | null>(null)
   const [deleteRole, setDeleteRole] = useState<Role | null>(null)
   const [feedback, setFeedback] = useState<{
@@ -290,9 +293,13 @@ export function RolesPage() {
                           </TableCell>
                           <TableCell>
                             <div className="space-y-2">
-                              <div className="text-sm text-muted-foreground">
-                                共 {role.permission_count} 项权限
-                              </div>
+                              <button
+                                type="button"
+                                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                                onClick={() => setDetailRoleId(role.id)}
+                              >
+                                共 {role.permission_count} 项权限，点击查看完整列表
+                              </button>
                               <div className="flex flex-wrap gap-2">
                                 {role.permissions.slice(0, 2).map((permission) => (
                                   <Badge key={permission.id} variant="outline">
@@ -300,9 +307,11 @@ export function RolesPage() {
                                   </Badge>
                                 ))}
                                 {role.permission_count > 2 ? (
-                                  <Badge variant="secondary">
-                                    +{role.permission_count - 2}
-                                  </Badge>
+                                  <button type="button" onClick={() => setDetailRoleId(role.id)}>
+                                    <Badge variant="secondary" className="cursor-pointer">
+                                      +{role.permission_count - 2}
+                                    </Badge>
+                                  </button>
                                 ) : null}
                               </div>
                             </div>
@@ -328,6 +337,10 @@ export function RolesPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setDetailRoleId(role.id)}>
+                                  <Eye />
+                                  查看详情
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                   disabled={role.is_system}
                                   onClick={() => setEditRoleId(role.id)}
@@ -381,6 +394,16 @@ export function RolesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <RoleDetailsDialog
+        open={detailRoleId !== null}
+        roleId={detailRoleId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailRoleId(null)
+          }
+        }}
+      />
 
       <RoleFormDialog
         open={createOpen}
