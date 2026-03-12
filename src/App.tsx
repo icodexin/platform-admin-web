@@ -4,6 +4,7 @@ import { AdminLayout } from "@/features/admin/layout/admin-layout"
 import { ModulePlaceholderPage } from "@/features/admin/pages/module-placeholder"
 import { RequireAuth } from "@/features/auth/components/require-auth"
 import { LoginPage } from "@/features/auth/pages/login-page"
+import { RegisterPage } from "@/features/auth/pages/register-page"
 import { PermissionsPage } from "@/features/permissions/pages/permissions-page"
 import { RolesPage } from "@/features/roles/pages/roles-page"
 import { UsersPage } from "@/features/users/pages/users-page"
@@ -14,6 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate replace to="/admin/users" />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate replace to="users" />} />

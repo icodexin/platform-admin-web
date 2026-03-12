@@ -9,7 +9,7 @@ import {
   ServerCog,
   ShieldCheck,
 } from "lucide-react"
-import { Navigate, useLocation, useNavigate } from "react-router-dom"
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 
 import { authApi, usersApi } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -247,6 +247,16 @@ export function LoginPage() {
                     {isSubmitting ? "登录中..." : "进入系统"}
                     <ArrowRight className="size-4" />
                   </Button>
+
+                  <div className="text-center text-sm text-slate-500">
+                    还没有账号？{" "}
+                    <Link
+                      to="/register"
+                      className="font-medium text-slate-900 underline-offset-4 hover:underline"
+                    >
+                      立即注册
+                    </Link>
+                  </div>
                 </form>
               </CardContent>
             </Card>
