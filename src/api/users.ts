@@ -47,6 +47,14 @@ async function deactivateCurrentUser() {
   return response.data
 }
 
+async function deactivateUser(userId: UserId) {
+  const response = await apiClient.post<DetailResponse>(
+    `/api/users/${userId}/deactivate`,
+  )
+
+  return response.data
+}
+
 export const usersApi = {
   createUser,
   listUsers,
@@ -54,4 +62,5 @@ export const usersApi = {
   getUserById,
   updateUser,
   deactivateCurrentUser,
+  deactivateUser,
 }
