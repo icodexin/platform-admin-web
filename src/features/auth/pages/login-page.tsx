@@ -59,15 +59,6 @@ export function LoginPage() {
   const location = useLocation()
   const currentUser = useAuthStore((state) => state.currentUser)
   const setCurrentUser = useAuthStore((state) => state.setCurrentUser)
-
-  const from = (
-    location.state as { from?: { pathname?: string } } | null
-  )?.from?.pathname
-
-  if (currentUser) {
-    return <Navigate replace to="/admin/users" />
-  }
-
   const {
     register,
     handleSubmit,
@@ -79,6 +70,14 @@ export function LoginPage() {
       password: "",
     },
   })
+
+  const from = (
+    location.state as { from?: { pathname?: string } } | null
+  )?.from?.pathname
+
+  if (currentUser) {
+    return <Navigate replace to="/admin/users" />
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null)

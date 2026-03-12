@@ -2,10 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ActivitySquare,
   ChevronDown,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   MoonStar,
   ServerCog,
+  ShieldCheck,
   SunMedium,
   UsersRound,
 } from "lucide-react"
@@ -52,6 +54,16 @@ const menuItems = [
     icon: UsersRound,
   },
   {
+    title: "角色管理",
+    href: "/admin/roles",
+    icon: ShieldCheck,
+  },
+  {
+    title: "权限管理",
+    href: "/admin/permissions",
+    icon: KeyRound,
+  },
+  {
     title: "传感器监控",
     href: "/admin/sensors",
     icon: ActivitySquare,
@@ -71,6 +83,14 @@ const pageTitleMap: Record<string, { title: string; description: string }> = {
   "/admin/sensors": {
     title: "传感器监控",
     description: "查看实时感知设备状态、指标与异常趋势。",
+  },
+  "/admin/roles": {
+    title: "角色管理",
+    description: "管理角色体系及其对应的权限集合。",
+  },
+  "/admin/permissions": {
+    title: "权限管理",
+    description: "查看、维护平台内的权限项及关联情况。",
   },
   "/admin/services": {
     title: "服务管理",

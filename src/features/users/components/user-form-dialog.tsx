@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 
 import { usersApi } from "@/api"
 import { Button } from "@/components/ui/button"
@@ -208,7 +208,11 @@ export function UserFormDialog({
     }
   }, [form, mode, open, userQuery.data])
 
-  const userType = form.watch("user_type")
+  const userType =
+    useWatch({
+      control: form.control,
+      name: "user_type",
+    }) ?? "student"
 
   const mutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
