@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 
-import { usersApi } from "@/api"
+import { rolesApi, usersApi } from "@/api"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { normalizeApiError } from "@/lib/http"
+import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth-store"
 import type {
   CreateUserPayload,
@@ -56,6 +58,7 @@ interface UserFormValues {
   enrollment_year: string
   department: string
   title: string
+  role_ids: number[]
 }
 
 const defaultValues: UserFormValues = {
@@ -71,6 +74,7 @@ const defaultValues: UserFormValues = {
   enrollment_year: "",
   department: "",
   title: "",
+  role_ids: [],
 }
 
 function toOptionalText(value: string) {
@@ -100,6 +104,7 @@ function getFormValuesFromUser(user: User): UserFormValues {
         : "",
     department: user.user_type === "teacher" ? user.department ?? "" : "",
     title: user.user_type === "teacher" ? user.title ?? "" : "",
+    role_ids: [],
   }
 }
 
@@ -192,6 +197,18 @@ export function UserFormDialog({
     enabled: open && mode === "edit" && userId !== null,
   })
 
+  const userRolesQuery = useQuery({
+    queryKey: ["users", "roles", userId],
+    queryFn: () => usersApi.getUserRoles(userId!),
+    enabled: open && mode === "edit" && userId !== null,
+  })
+
+  const rolesQuery = useQuery({
+    queryKey: ["roles", "options"],
+    queryFn: () => rolesApi.listRoles({ page: 1, page_size: 100 }),
+    enabled: open && mode === "edit",
+  })
+
   useEffect(() => {
     if (!open) {
       form.reset(defaultValues)
@@ -208,11 +225,52 @@ export function UserFormDialog({
     }
   }, [form, mode, open, userQuery.data])
 
+  useEffect(() => {
+    if (!open || mode !== "edit" || !userRolesQuery.data) {
+      return
+    }
+
+    form.setValue(
+      "role_ids",
+      userRolesQuery.data.roles
+        .filter((role) => role.id !== userRolesQuery.data.immutable_role.id)
+        .map((role) => role.id),
+      {
+        shouldDirty: false,
+        shouldTouch: false,
+      },
+    )
+  }, [form, mode, open, userRolesQuery.data])
+
   const userType =
     useWatch({
       control: form.control,
       name: "user_type",
     }) ?? "student"
+  const selectedRoleIds =
+    useWatch({
+      control: form.control,
+      name: "role_ids",
+    }) ?? []
+  const hasRoleChanges = Boolean(form.formState.dirtyFields.role_ids)
+  const hasProfileChanges = Object.keys(form.formState.dirtyFields).some(
+    (fieldName) => fieldName !== "role_ids",
+  )
+  const immutableRole = userRolesQuery.data?.immutable_role ?? null
+  const customRoles = (rolesQuery.data?.items ?? []).filter((role) => !role.is_system)
+
+  const toggleRole = (roleId: number) => {
+    form.setValue(
+      "role_ids",
+      selectedRoleIds.includes(roleId)
+        ? selectedRoleIds.filter((id) => id !== roleId)
+        : [...selectedRoleIds, roleId],
+      {
+        shouldDirty: true,
+        shouldTouch: true,
+      },
+    )
+  }
 
   const mutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
@@ -220,15 +278,34 @@ export function UserFormDialog({
         return usersApi.createUser(toCreatePayload(values))
       }
 
-      return usersApi.updateUser(userId!, toUpdatePayload(values))
+      let user = userQuery.data
+
+      if (hasProfileChanges) {
+        user = await usersApi.updateUser(userId!, toUpdatePayload(values))
+      }
+
+      if (hasRoleChanges) {
+        await usersApi.updateUserRoles(userId!, {
+          role_ids: values.role_ids,
+        })
+      }
+
+      if (!user) {
+        user = await usersApi.getUserById(userId!)
+      }
+
+      return user
     },
     onSuccess: async (user) => {
       await queryClient.invalidateQueries({ queryKey: ["users"] })
       await queryClient.invalidateQueries({ queryKey: ["users", "detail", user.id] })
+      await queryClient.invalidateQueries({ queryKey: ["users", "roles", user.id] })
+      await queryClient.invalidateQueries({ queryKey: ["roles"] })
       await queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] })
 
       if (currentUser?.id === user.id) {
-        setCurrentUser(user)
+        const nextCurrentUser = await usersApi.getCurrentUser()
+        setCurrentUser(nextCurrentUser)
       }
 
       onSuccess(mode === "create" ? "用户创建成功。" : "用户信息已更新。")
@@ -409,11 +486,88 @@ export function UserFormDialog({
               ) : null}
             </div>
 
+            {mode === "edit" ? (
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium">角色绑定</div>
+                    <p className="text-sm text-muted-foreground">
+                      用户类型对应的系统内置角色会自动保留，只能调整附加的自定义角色。
+                    </p>
+                  </div>
+                  <Badge variant="secondary">附加角色 {selectedRoleIds.length} 项</Badge>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  {userRolesQuery.isPending || rolesQuery.isPending ? (
+                    <div className="grid gap-3">
+                      <Skeleton className="h-16 rounded-2xl" />
+                      <Skeleton className="h-28 rounded-2xl" />
+                    </div>
+                  ) : null}
+
+                  {immutableRole ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">系统内置角色</div>
+                      <div className="rounded-2xl border bg-background px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">{immutableRole.name}</Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {immutableRole.code}
+                          </span>
+                          <span className="text-xs text-muted-foreground">不可变更</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {!rolesQuery.isPending ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">附加自定义角色</div>
+                      {customRoles.length > 0 ? (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {customRoles.map((role) => {
+                            const isSelected = selectedRoleIds.includes(role.id)
+
+                            return (
+                              <button
+                                key={role.id}
+                                type="button"
+                                className={cn(
+                                  "flex min-h-16 flex-col items-start justify-center rounded-xl border px-4 py-3 text-left transition-colors",
+                                  isSelected
+                                    ? "border-primary bg-primary/8 text-foreground"
+                                    : "border-border bg-background hover:bg-accent/40",
+                                )}
+                                onClick={() => toggleRole(role.id)}
+                              >
+                                <span className="text-sm font-medium">{role.name}</span>
+                                <span className="mt-1 text-xs text-muted-foreground">
+                                  {role.code}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed px-4 py-8 text-sm text-muted-foreground">
+                          当前没有可分配的自定义角色。
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 取消
               </Button>
-              <Button disabled={mutation.isPending} type="submit">
+              <Button
+                disabled={mutation.isPending || userRolesQuery.isPending || rolesQuery.isPending}
+                type="submit"
+              >
                 {mutation.isPending ? "提交中..." : mode === "create" ? "创建用户" : "保存修改"}
               </Button>
             </DialogFooter>
