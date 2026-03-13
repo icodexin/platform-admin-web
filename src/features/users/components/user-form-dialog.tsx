@@ -491,7 +491,10 @@ export function UserFormDialog({
                 取消
               </Button>
               <Button
-                disabled={mutation.isPending || userRolesQuery.isPending || rolesQuery.isPending}
+                disabled={
+                  mutation.isPending ||
+                  (mode === "edit" && (userRolesQuery.isPending || rolesQuery.isPending))
+                }
                 type="submit"
               >
                 {mutation.isPending ? "提交中..." : mode === "create" ? "创建用户" : "保存修改"}
