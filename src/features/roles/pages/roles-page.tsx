@@ -281,6 +281,7 @@ export function RolesPage() {
 
                 {!rolesQuery.isPending
                   ? items.map((role) => {
+                      const editDisabled = role.is_system && role.code === "admin"
                       const deleteDisabled = role.is_system || role.user_count > 0
 
                       return (
@@ -342,11 +343,15 @@ export function RolesPage() {
                                   查看详情
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  disabled={role.is_system}
+                                  disabled={editDisabled}
                                   onClick={() => setEditRoleId(role.id)}
                                 >
                                   <Edit3 />
-                                  {role.is_system ? "系统角色不可编辑" : "编辑角色"}
+                                  {editDisabled
+                                    ? "管理员内置角色不可编辑"
+                                    : role.is_system
+                                      ? "编辑角色权限"
+                                      : "编辑角色"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"

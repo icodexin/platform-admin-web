@@ -18,7 +18,13 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { normalizeApiError } from "@/lib/http"
 import { cn } from "@/lib/utils"
-import type { CreateRolePayload, Role, RoleId, UpdateRolePayload } from "@/types/roles"
+import type {
+  CreateRolePayload,
+  Role,
+  RoleId,
+  UpdateRolePayload,
+  UpdateRolePermissionsPayload,
+} from "@/types/roles"
 
 interface RoleFormDialogProps {
   open: boolean
@@ -65,6 +71,12 @@ function toUpdatePayload(values: RoleFormValues): UpdateRolePayload {
   }
 }
 
+function toUpdatePermissionsPayload(values: RoleFormValues): UpdateRolePermissionsPayload {
+  return {
+    permission_ids: values.permission_ids,
+  }
+}
+
 export function RoleFormDialog({
   open,
   mode,
@@ -85,6 +97,12 @@ export function RoleFormDialog({
     enabled: open && mode === "edit" && roleId !== null,
   })
 
+  const rolePermissionsQuery = useQuery({
+    queryKey: ["roles", "permissions", roleId],
+    queryFn: () => rolesApi.getRolePermissions(roleId!),
+    enabled: open && mode === "edit" && roleId !== null,
+  })
+
   const permissionsQuery = useQuery({
     queryKey: ["permissions", "options"],
     queryFn: () => permissionsApi.listPermissions({ page: 1, page_size: 100 }),
@@ -102,15 +120,27 @@ export function RoleFormDialog({
       return
     }
 
-    if (roleQuery.data) {
-      form.reset(getFormValues(roleQuery.data))
+    const roleData = rolePermissionsQuery.data ?? roleQuery.data
+
+    if (roleData) {
+      form.reset(getFormValues(roleData))
     }
-  }, [form, mode, open, roleQuery.data])
+  }, [form, mode, open, rolePermissionsQuery.data, roleQuery.data])
+
+  const roleData = rolePermissionsQuery.data ?? roleQuery.data
+  const isSystemRole = roleData?.is_system ?? false
 
   const mutation = useMutation({
     mutationFn: async (values: RoleFormValues) => {
       if (mode === "create") {
         return rolesApi.createRole(toCreatePayload(values))
+      }
+
+      if (isSystemRole) {
+        return rolesApi.updateRolePermissions(
+          roleId!,
+          toUpdatePermissionsPayload(values),
+        )
       }
 
       return rolesApi.updateRole(roleId!, toUpdatePayload(values))
@@ -121,8 +151,17 @@ export function RoleFormDialog({
       await queryClient.invalidateQueries({
         queryKey: ["roles", "detail", role.id],
       })
+      await queryClient.invalidateQueries({
+        queryKey: ["roles", "permissions", role.id],
+      })
 
-      onSuccess(mode === "create" ? "角色创建成功。" : "角色信息已更新。")
+      onSuccess(
+        mode === "create"
+          ? "角色创建成功。"
+          : isSystemRole
+            ? "角色权限绑定已更新。"
+            : "角色信息已更新。",
+      )
       onOpenChange(false)
     },
     onError: (error) => {
@@ -157,11 +196,13 @@ export function RoleFormDialog({
           <DialogDescription>
             {mode === "create"
               ? "创建角色并配置该角色默认可用的权限集合。"
-              : "更新角色编码、名称以及权限绑定。"}
+              : isSystemRole
+                ? "当前内置角色仅支持调整权限绑定，角色编码与名称不可修改。"
+                : "更新角色编码、名称以及权限绑定。"}
           </DialogDescription>
         </DialogHeader>
 
-        {mode === "edit" && roleQuery.isPending ? (
+        {mode === "edit" && (roleQuery.isPending || rolePermissionsQuery.isPending) ? (
           <div className="space-y-4">
             <Skeleton className="h-20 w-full rounded-2xl" />
             <Skeleton className="h-20 w-full rounded-2xl" />
@@ -178,6 +219,7 @@ export function RoleFormDialog({
                 <Input
                   id="role-code"
                   placeholder="例如 biz.ops.viewer"
+                  disabled={isSystemRole}
                   aria-invalid={form.formState.errors.code ? true : undefined}
                   {...form.register("code", {
                     required: "请输入角色编码",
@@ -202,6 +244,7 @@ export function RoleFormDialog({
                 <Input
                   id="role-name"
                   placeholder="请输入角色名称"
+                  disabled={isSystemRole}
                   aria-invalid={form.formState.errors.name ? true : undefined}
                   {...form.register("name", {
                     required: "请输入角色名称",

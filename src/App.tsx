@@ -6,6 +6,7 @@ import { RequireAuth } from "@/features/auth/components/require-auth"
 import { LoginPage } from "@/features/auth/pages/login-page"
 import { RegisterPage } from "@/features/auth/pages/register-page"
 import { PermissionsPage } from "@/features/permissions/pages/permissions-page"
+import { RabbitMQBindingsPage } from "@/features/permissions/pages/rabbitmq-bindings-page"
 import { RolesPage } from "@/features/roles/pages/roles-page"
 import { UsersPage } from "@/features/users/pages/users-page"
 
@@ -22,6 +23,10 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="roles" element={<RolesPage />} />
             <Route path="permissions" element={<PermissionsPage />} />
+            <Route
+              path="permissions/rabbitmq-bindings"
+              element={<RabbitMQBindingsPage />}
+            />
             <Route
               path="sensors"
               element={

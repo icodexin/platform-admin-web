@@ -42,6 +42,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
@@ -66,6 +69,16 @@ const menuItems = [
     title: "权限管理",
     href: "/admin/permissions",
     icon: KeyRound,
+    children: [
+      {
+        title: "权限列表",
+        href: "/admin/permissions",
+      },
+      {
+        title: "RabbitMQ 权限绑定",
+        href: "/admin/permissions/rabbitmq-bindings",
+      },
+    ],
   },
   {
     title: "传感器监控",
@@ -95,6 +108,10 @@ const pageTitleMap: Record<string, { title: string; description: string }> = {
   "/admin/permissions": {
     title: "权限管理",
     description: "查看、维护平台内的权限项及关联情况。",
+  },
+  "/admin/permissions/rabbitmq-bindings": {
+    title: "RabbitMQ 权限绑定",
+    description: "按权限维护 RabbitMQ 标签、vhost、resource 与 topic 规则。",
   },
   "/admin/services": {
     title: "服务管理",
@@ -175,13 +192,33 @@ export function AdminLayout() {
                     <SidebarMenuButton
                       asChild
                       tooltip={item.title}
-                      isActive={location.pathname === item.href}
+                      isActive={
+                        location.pathname === item.href ||
+                        item.children?.some((child) => child.href === location.pathname) === true
+                      }
                     >
                       <NavLink to={item.href}>
                         <item.icon />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
+
+                    {item.children?.length ? (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.href}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location.pathname === child.href}
+                            >
+                              <NavLink to={child.href}>
+                                <span>{child.title}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

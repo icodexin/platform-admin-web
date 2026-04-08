@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Edit3, KeyRound, Plus, RefreshCcw, Search, Trash2 } from "lucide-react"
+import { Edit3, KeyRound, Link2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react"
 import { startTransition, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { permissionsApi } from "@/api"
 import {
@@ -49,6 +50,7 @@ function formatDateTime(value: string) {
 }
 
 export function PermissionsPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [keyword, setKeyword] = useState("")
   const [keywordInput, setKeywordInput] = useState("")
@@ -292,6 +294,16 @@ export function PermissionsPage() {
                               >
                                 <Edit3 />
                                 {permission.is_system ? "系统权限不可编辑" : "编辑权限"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate(
+                                    `/admin/permissions/rabbitmq-bindings?permissionId=${permission.id}`,
+                                  )
+                                }
+                              >
+                                <Link2 />
+                                管理 RabbitMQ 绑定
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"

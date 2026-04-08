@@ -45,4 +45,8 @@ export interface UpdateRolePayload {
   permission_ids?: number[] | null
 }
 
+export interface UpdateRolePermissionsPayload {
+  permission_ids: number[]
+}
+
 export type DeleteRoleResponse = DetailResponse | Record<string, unknown>
