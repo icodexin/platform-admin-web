@@ -120,6 +120,34 @@ Authorization: Bearer <access_token>
 - Bearer access token
 - 表单字段 `refresh_token`
 
+## RabbitMQ 认证后端接口
+
+RabbitMQ 通过 `/mq/auth/*` 调用 FastAPI 认证后端。
+
+### `POST /mq/auth/user`
+
+支持两种登录方式：
+
+- 密码模式：`username=<统一身份 ID>`，`password=<用户密码>`
+- JWT 模式：`username=<统一身份 ID>`，`password=<access_token>`
+
+JWT 模式约束：
+
+- 仅接受 access token，不接受 refresh token
+- token 必须未过期且未进入 blocklist
+- `username` 必须与 token 对应用户的 `unified_id` 一致
+
+返回值：
+
+- `allow`
+- `allow <tag1> <tag2> ...`
+- `deny`
+
+说明：
+
+- `/mq/auth/vhost`、`/mq/auth/resource`、`/mq/auth/topic` 仍按 `username` 查询当前用户的 RabbitMQ 权限绑定
+- 因此 RabbitMQ 客户端在 JWT 模式下，连接用户名仍必须传统一身份 ID，而不是用户主键 ID
+
 ## 用户接口
 
 ### `POST /api/users/`
@@ -232,6 +260,83 @@ Authorization: Bearer <access_token>
 - 可更新基础字段：`unified_id`、`password`、`name`、`gender`、`birthdate`、`is_active`
 - 学生可更新学生扩展字段：`student_type`、`college`、`major`、`enrollment_year`
 - 教师可更新教师扩展字段：`department`、`title`
+
+## 权限管理接口
+
+`/api/permissions/*` 整组接口要求当前登录用户具有 `sys.permission.manage`。
+
+### `GET /api/permissions/`
+
+分页查询权限列表。
+
+### `POST /api/permissions/`
+
+创建业务权限。
+
+### `GET /api/permissions/{permission_id}`
+
+查询权限详情。
+
+### `PUT /api/permissions/{permission_id}`
+
+更新权限基础信息。
+
+### `DELETE /api/permissions/{permission_id}`
+
+删除权限。
+
+注意：
+
+- 系统内置权限不允许修改或删除
+- 已绑定角色的权限不能直接删除
+
+## RabbitMQ 权限绑定管理接口
+
+RabbitMQ 绑定作为权限的子资源管理，整组接口同样要求 `sys.permission.manage`。
+
+### `GET /api/permissions/{permission_id}/rabbitmq-bindings`
+
+查询指定权限下的全部 RabbitMQ 权限绑定。
+
+### `POST /api/permissions/{permission_id}/rabbitmq-bindings`
+
+创建一条 RabbitMQ 权限绑定。
+
+公共字段：
+
+- `check_type`: `user | vhost | resource | topic`
+- `vhost_pattern`: shell wildcard，默认 `*`
+- `resource_type`: `exchange | queue | topic`
+- `resource_name_pattern`: queue/exchange 匹配模式
+- `permission_level`: `configure | write | read`
+- `routing_key_pattern`: topic routing key 模式
+- `rabbitmq_tag`: `management | policymaker | monitoring | administrator`
+
+字段约束：
+
+- `user`:
+  - 仅允许设置 `rabbitmq_tag`
+- `vhost`:
+  - 仅允许设置 `vhost_pattern`
+- `resource`:
+  - 必须设置 `permission_level` 和 `resource_name_pattern`
+  - 不允许设置 `routing_key_pattern`、`rabbitmq_tag`
+- `topic`:
+  - 必须设置 `permission_level`、`resource_name_pattern`、`routing_key_pattern`
+  - `resource_type` 仅允许为空或 `topic`
+  - 不允许设置 `rabbitmq_tag`
+
+### `GET /api/permissions/{permission_id}/rabbitmq-bindings/{binding_id}`
+
+查询单条绑定详情。
+
+### `PUT /api/permissions/{permission_id}/rabbitmq-bindings/{binding_id}`
+
+更新单条绑定。
+
+### `DELETE /api/permissions/{permission_id}/rabbitmq-bindings/{binding_id}`
+
+删除单条绑定。
 
 业务约束：
 
@@ -460,7 +565,9 @@ Authorization: Bearer <access_token>
 说明：
 
 - `permission_ids` 传入后会整体覆盖该角色当前的权限绑定
-- 系统内置角色不允许修改
+- 自定义角色可更新 `code`、`name`、`permission_ids`
+- 非管理员内置角色（当前为 `teacher`、`student`）仅允许更新 `permission_ids`
+- 管理员内置角色 `admin` 不允许修改
 - 角色编码修改后仍要求全局唯一
 
 请求体示例：
@@ -471,6 +578,37 @@ Authorization: Bearer <access_token>
   "permission_ids": [12]
 }
 ```
+
+### `GET /api/roles/{role_id}/permissions`
+
+查询角色当前绑定的权限列表。
+
+返回内容沿用角色详情结构，包含：
+
+- 角色基础信息
+- 当前权限列表
+- `permission_count`
+- `is_system`
+
+### `PUT /api/roles/{role_id}/permissions`
+
+整体覆盖角色当前绑定的权限列表。
+
+请求体示例：
+
+```json
+{
+  "permission_ids": [3, 12, 18]
+}
+```
+
+说明：
+
+- 自定义角色允许调用
+- 非管理员内置角色（当前为 `teacher`、`student`）允许调用
+- 管理员内置角色 `admin` 不允许调用
+- 所有传入的权限 ID 都必须存在
+- 该接口只修改权限绑定，不修改角色编码和名称
 
 ### `DELETE /api/roles/{role_id}`
 
@@ -497,7 +635,7 @@ Authorization: Bearer <access_token>
 
 - 管理员可以登录、查看自己、查看列表、查看他人、修改自己、创建管理员、停用他人
 - 管理员可以查看用户当前角色，并在保留系统角色的前提下为用户增删自定义角色
-- 管理员可以查看角色列表、创建角色、修改角色权限、删除未绑定用户的自定义角色
+- 管理员可以查看角色列表、创建角色、修改自定义角色、为 teacher/student 绑定新权限、删除未绑定用户的自定义角色
 - 学生可以登录、查看自己、修改自己，不能查看他人、不能看列表、不能创建管理员、不能停用他人
 - 教师可以登录、查看自己、修改自己，不能查看他人、不能看列表、不能停用他人
 - 匿名用户可以注册普通学生/教师，不能访问受保护接口，不能创建管理员
